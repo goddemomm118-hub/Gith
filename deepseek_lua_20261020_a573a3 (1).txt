@@ -1,0 +1,585 @@
+--// ============================================================
+--// KEVIN HUB - FE SAFE + KEY SYSTEM
+--// ============================================================
+
+local TweenService = game:GetService("TweenService")
+local TextChatService = game:GetService("TextChatService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local DISPLAY_NAME = LocalPlayer.DisplayName
+local USERNAME = LocalPlayer.Name
+local VERIFIED_CHAR = utf8.char(57344)
+local TOGGLE_GUI_NAME = "CompactToggleGui"
+
+--// ============================================================
+--// KEY SYSTEM CONFIG
+--// ============================================================
+
+local KEY_CONFIG = {
+    ValidKeys = {
+        ["KEVIN-2024"] = true,
+        ["KEVIN-FREE"] = true,
+        ["VIP-KEVIN"]  = true,
+    },
+    SaveFile = "kevinhub_key.txt",
+    Enabled = true, -- set false to skip key prompt entirely
+}
+
+--// ============================================================
+--// STATE
+--// ============================================================
+
+local State = {
+    verified = false,
+    starCreator = false,
+}
+
+--// ============================================================
+--// KEY SYSTEM
+--// ============================================================
+
+local function hasSavedKey()
+    if not KEY_CONFIG.Enabled then return true end
+    if not isfile or not isfile(KEY_CONFIG.SaveFile) then return false end
+    local ok, contents = pcall(readfile, KEY_CONFIG.SaveFile)
+    if not ok or not contents then return false end
+    return KEY_CONFIG.ValidKeys[contents:gsub("%s+", "")] == true
+end
+
+local function saveKey(key)
+    if not writefile then return end
+    pcall(writefile, KEY_CONFIG.SaveFile, key)
+end
+
+local function showKeyPrompt(onSuccess)
+    -- remove any existing prompt
+    local old = PlayerGui:FindFirstChild("KevinKeyGui")
+    if old then old:Destroy() end
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "KevinKeyGui"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.Parent = PlayerGui
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 180)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -90)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(180, 40, 40)
+    stroke.Thickness = 1
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundColor3 = Color3.fromRGB(30, 8, 8)
+    title.BorderSizePixel = 0
+    title.Font = Enum.Font.GothamBold
+    title.Text = "Kevin Hub — Enter Key"
+    title.TextColor3 = Color3.fromRGB(255, 200, 200)
+    title.TextSize = 15
+    title.Parent = frame
+    local tCorner = Instance.new("UICorner")
+    tCorner.CornerRadius = UDim.new(0, 12)
+    tCorner.Parent = title
+
+    local box = Instance.new("TextBox")
+    box.Size = UDim2.new(1, -40, 0, 40)
+    box.Position = UDim2.new(0, 20, 0, 60)
+    box.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+    box.BorderSizePixel = 0
+    box.Font = Enum.Font.Gotham
+    box.Text = ""
+    box.PlaceholderText = "Enter your key..."
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.PlaceholderColor3 = Color3.fromRGB(200, 130, 130)
+    box.TextSize = 14
+    box.ClearTextOnFocus = false
+    box.Parent = frame
+    local bCorner = Instance.new("UICorner")
+    bCorner.CornerRadius = UDim.new(0, 8)
+    bCorner.Parent = box
+    local bStroke = Instance.new("UIStroke")
+    bStroke.Color = Color3.fromRGB(180, 40, 40)
+    bStroke.Thickness = 1
+    bStroke.Parent = box
+
+    local status = Instance.new("TextLabel")
+    status.Size = UDim2.new(1, -40, 0, 20)
+    status.Position = UDim2.new(0, 20, 0, 105)
+    status.BackgroundTransparency = 1
+    status.Font = Enum.Font.Gotham
+    status.Text = ""
+    status.TextColor3 = Color3.fromRGB(255, 100, 100)
+    status.TextSize = 12
+    status.TextXAlignment = Enum.TextXAlignment.Left
+    status.Parent = frame
+
+    local submit = Instance.new("TextButton")
+    submit.Size = UDim2.new(1, -40, 0, 36)
+    submit.Position = UDim2.new(0, 20, 1, -48)
+    submit.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+    submit.Font = Enum.Font.GothamBold
+    submit.Text = "Submit"
+    submit.TextColor3 = Color3.fromRGB(255, 200, 200)
+    submit.TextSize = 14
+    submit.Parent = frame
+    local sCorner = Instance.new("UICorner")
+    sCorner.CornerRadius = UDim.new(0, 8)
+    sCorner.Parent = submit
+    local sStroke = Instance.new("UIStroke")
+    sStroke.Color = Color3.fromRGB(180, 40, 40)
+    sStroke.Thickness = 1
+    sStroke.Parent = submit
+
+    local function trySubmit()
+        local entered = box.Text:gsub("%s+", "")
+        if entered == "" then
+            status.Text = "Please enter a key."
+            return
+        end
+        if KEY_CONFIG.ValidKeys[entered] then
+            status.TextColor3 = Color3.fromRGB(100, 255, 140)
+            status.Text = "Key accepted!"
+            saveKey(entered)
+            task.wait(0.6)
+            gui:Destroy()
+            onSuccess()
+        else
+            status.TextColor3 = Color3.fromRGB(255, 100, 100)
+            status.Text = "Invalid key."
+            box.Text = ""
+        end
+    end
+
+    submit.MouseButton1Click:Connect(trySubmit)
+    box.FocusLost:Connect(function(enterPressed)
+        if enterPressed then trySubmit() end
+    end)
+end
+
+local function startHub()
+    --// everything below runs only after key is validated
+    local existingGui = PlayerGui:FindFirstChild(TOGGLE_GUI_NAME)
+    if existingGui then existingGui:Destroy() end
+
+    --// ============================================================
+    --// UI HELPERS
+    --// ============================================================
+
+    local function createCorner(parent, radius)
+        local c = Instance.new("UICorner")
+        c.CornerRadius = UDim.new(0, radius)
+        c.Parent = parent
+        return c
+    end
+
+    local function createStroke(parent, color, thickness)
+        local s = Instance.new("UIStroke")
+        s.Color = color
+        s.Thickness = thickness
+        s.Parent = parent
+        return s
+    end
+
+    local function tween(instance, props, duration, style, direction)
+        local info = TweenInfo.new(
+            duration or 0.3,
+            style or Enum.EasingStyle.Quad,
+            direction or Enum.EasingDirection.Out
+        )
+        local t = TweenService:Create(instance, info, props)
+        t:Play()
+        return t
+    end
+
+    --// ============================================================
+    --// MAIN WINDOW
+    --// ============================================================
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = TOGGLE_GUI_NAME
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.Parent = PlayerGui
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "Main"
+    MainFrame.Size = UDim2.new(0, 220, 0, 190)
+    MainFrame.Position = UDim2.new(0.5, -110, 0.5, -95)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = ScreenGui
+
+    createCorner(MainFrame, 12)
+    createStroke(MainFrame, Color3.fromRGB(180, 40, 40), 1)
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 32)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(30, 8, 8)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+    createCorner(TitleBar, 12)
+
+    local TitleFill = Instance.new("Frame")
+    TitleFill.Size = UDim2.new(1, 0, 0, 12)
+    TitleFill.Position = UDim2.new(0, 0, 1, -12)
+    TitleFill.BackgroundColor3 = TitleBar.BackgroundColor3
+    TitleFill.BorderSizePixel = 0
+    TitleFill.ZIndex = 0
+    TitleFill.Parent = TitleBar
+
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Size = UDim2.new(1, -70, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.Text = "Kevin Hub"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
+    TitleLabel.TextSize = 14
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+
+    local ContentContainer = Instance.new("Frame")
+    ContentContainer.Name = "ContentContainer"
+    ContentContainer.Size = UDim2.new(1, 0, 1, -32)
+    ContentContainer.Position = UDim2.new(0, 0, 0, 32)
+    ContentContainer.BackgroundTransparency = 1
+    ContentContainer.BorderSizePixel = 0
+    ContentContainer.Parent = MainFrame
+
+    --// ============================================================
+    --// MINIMIZE / CLOSE
+    --// ============================================================
+
+    local isMinimized = false
+    local isClosing = false
+
+    local MinimizeButton = Instance.new("TextButton")
+    MinimizeButton.Size = UDim2.new(0, 24, 0, 24)
+    MinimizeButton.Position = UDim2.new(1, -56, 0, 4)
+    MinimizeButton.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+    MinimizeButton.Text = "−"
+    MinimizeButton.Font = Enum.Font.GothamBold
+    MinimizeButton.TextSize = 18
+    MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinimizeButton.Parent = TitleBar
+    createCorner(MinimizeButton, 8)
+
+    MinimizeButton.MouseButton1Click:Connect(function()
+        if isClosing then return end
+        isMinimized = not isMinimized
+        if isMinimized then
+            MinimizeButton.Text = "+"
+            tween(MainFrame, { Size = UDim2.new(0, 220, 0, 32) })
+            tween(ContentContainer, { Size = UDim2.new(1, 0, 0, 0) })
+        else
+            MinimizeButton.Text = "−"
+            tween(MainFrame, { Size = UDim2.new(0, 220, 0, 190) })
+            tween(ContentContainer, { Size = UDim2.new(1, 0, 1, -32) })
+        end
+    end)
+
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 24, 0, 24)
+    CloseButton.Position = UDim2.new(1, -28, 0, 4)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+    CloseButton.Text = "X"
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.TextSize = 14
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.Parent = TitleBar
+    createCorner(CloseButton, 8)
+
+    CloseButton.MouseButton1Click:Connect(function()
+        if isClosing then return end
+        isClosing = true
+        local t = TweenService:Create(MainFrame,
+            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            { Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0) }
+        )
+        t:Play()
+        t.Completed:Connect(function() ScreenGui:Destroy() end)
+    end)
+
+    --// ============================================================
+    --// DRAGGING
+    --// ============================================================
+
+    local dragState = {
+        dragging = false,
+        startPos = nil,
+        startFramePos = nil,
+        currentInput = nil,
+    }
+
+    TitleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragState.dragging = true
+            dragState.startPos = input.Position
+            dragState.startFramePos = MainFrame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragState.dragging = false
+                end
+            end)
+        end
+    end)
+
+    TitleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+            dragState.currentInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragState.currentInput and dragState.dragging then
+            local delta = input.Position - dragState.startPos
+            MainFrame.Position = UDim2.new(
+                dragState.startFramePos.X.Scale,
+                dragState.startFramePos.X.Offset + delta.X,
+                dragState.startFramePos.Y.Scale,
+                dragState.startFramePos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    --// ============================================================
+    --// TOGGLE BUTTON HELPER
+    --// ============================================================
+
+    local function createToggleButton(name, text, yOffset, onEnable, onDisable)
+        local enabled = false
+        local button = Instance.new("TextButton")
+        button.Name = name
+        button.Size = UDim2.new(1, -20, 0, 40)
+        button.Position = UDim2.new(0, 10, 0, yOffset)
+        button.BackgroundColor3 = Color3.fromRGB(60, 20, 20)
+        button.AutoButtonColor = false
+        button.Font = Enum.Font.Gotham
+        button.TextSize = 14
+        button.TextColor3 = Color3.fromRGB(255, 200, 200)
+        button.Text = text .. ":  Off"
+        button.Parent = ContentContainer
+        createCorner(button, 8)
+        createStroke(button, Color3.fromRGB(180, 40, 40), 1)
+
+        local function refresh()
+            local color = enabled and Color3.fromRGB(40, 120, 60) or Color3.fromRGB(60, 20, 20)
+            tween(button, { BackgroundColor3 = color }, 0.15)
+            button.Text = text .. (enabled and ":  On" or ":  Off")
+        end
+
+        button.MouseButton1Click:Connect(function()
+            enabled = not enabled
+            refresh()
+            if enabled then onEnable() else onDisable() end
+        end)
+        return button
+    end
+
+    --// ============================================================
+    --// SHARED HELPERS
+    --// ============================================================
+
+    local function containsTarget(text)
+        if not text or text == "" then return false end
+        if text:find(VERIFIED_CHAR) then return false end
+        return text:find(DISPLAY_NAME, 1, true)
+            or text:find(USERNAME, 1, true)
+            or text:find("@" .. USERNAME, 1, true)
+    end
+
+    local function isInPlayerList(descendant)
+        local parent = descendant
+        while parent and parent ~= CoreGui do
+            local lower = parent.Name:lower()
+            if lower:find("playerlist")
+                or lower:find("player_list")
+                or lower:find("people") then
+                return true
+            end
+            parent = parent.Parent
+        end
+        return false
+    end
+
+    --// ============================================================
+    --// VERIFIED MODULE
+    --// ============================================================
+
+    local verifiedConnections = setmetatable({}, { __mode = "k" })
+    local verifiedWatchTask
+
+    local function stopVerified()
+        State.verified = false
+        TextChatService.OnIncomingMessage = nil
+        if verifiedWatchTask then
+            task.cancel(verifiedWatchTask)
+            verifiedWatchTask = nil
+        end
+        table.clear(verifiedConnections)
+    end
+
+    local function tagText(obj)
+        if not State.verified then return end
+        local text = obj.Text
+        if not containsTarget(text) then return end
+        if text:find(VERIFIED_CHAR) then return end
+
+        local updated
+        if text:find(DISPLAY_NAME, 1, true) then
+            updated = text:gsub(DISPLAY_NAME, DISPLAY_NAME .. VERIFIED_CHAR, 1)
+        elseif text:find("@" .. USERNAME, 1, true) then
+            updated = text:gsub("@" .. USERNAME, "@" .. USERNAME .. VERIFIED_CHAR, 1)
+        elseif text:find(USERNAME, 1, true) then
+            updated = text:gsub(USERNAME, USERNAME .. VERIFIED_CHAR, 1)
+        end
+        if updated then obj.Text = updated end
+    end
+
+    local function watchTextLabel(obj)
+        if verifiedConnections[obj] then return end
+        verifiedConnections[obj] = true
+        tagText(obj)
+        obj:GetPropertyChangedSignal("Text"):Connect(function() tagText(obj) end)
+    end
+
+    local function startVerified()
+        stopVerified()
+        State.verified = true
+
+        TextChatService.OnIncomingMessage = function(message)
+            local props = Instance.new("TextChatMessageProperties")
+            if message.TextSource and message.TextSource.UserId == LocalPlayer.UserId then
+                local prefix = (message.PrefixText or DISPLAY_NAME .. ":"):gsub(":%s*$", "")
+                props.PrefixText = prefix .. VERIFIED_CHAR .. ":"
+            end
+            return props
+        end
+
+        verifiedWatchTask = task.spawn(function()
+            while State.verified do task.wait(0.8) end
+        end)
+
+        CoreGui.DescendantAdded:Connect(function(descendant)
+            if not State.verified then return end
+            if not (descendant:IsA("TextLabel") or descendant:IsA("TextButton")) then return end
+            task.defer(function()
+                if containsTarget(descendant.Text) then
+                    watchTextLabel(descendant)
+                end
+            end)
+        end)
+    end
+
+    --// ============================================================
+    --// STARCODE MODULE
+    --// ============================================================
+
+    local badgeConnections = setmetatable({}, { __mode = "k" })
+    local starCreatorWatchTask
+    local starCreatorAsset
+
+    local function stopStarCreator()
+        State.starCreator = false
+        if starCreatorWatchTask then
+            task.cancel(starCreatorWatchTask)
+            starCreatorWatchTask = nil
+        end
+        table.clear(badgeConnections)
+    end
+
+    local function ensureBadgeAsset()
+        if starCreatorAsset then return end
+        pcall(function()
+            local url = "https://devforum-uploads.s3.dualstack.us-east-2.amazonaws.com/uploads/original/4X/e/4/0/e40401a6461ea6998787a77c84b8ce47a4d6dca5.png"
+            writefile("starcreator.png", game:HttpGet(url))
+            starCreatorAsset = getcustomasset("starcreator.png")
+        end)
+    end
+
+    local function attachBadge(label)
+        if not State.starCreator or not starCreatorAsset then return end
+        if badgeConnections[label] then return end
+        if not isInPlayerList(label) then return end
+        badgeConnections[label] = true
+
+        local parent = label.Parent
+        if not parent then return end
+
+        local existing = parent:FindFirstChild("StarCreatorBadge")
+        if existing then existing:Destroy() end
+
+        local badge = Instance.new("ImageLabel")
+        badge.Name = "StarCreatorBadge"
+        badge.BackgroundTransparency = 1
+        badge.Image = starCreatorAsset
+        badge.Size = UDim2.new(0, 14, 0, 14)
+        badge.AnchorPoint = Vector2.new(1, 0.5)
+        badge.Position = UDim2.new(0, -3, 0.5, 1)
+        badge.ZIndex = label.ZIndex + 1
+        badge.Parent = parent
+
+        local function reposition()
+            if badge and badge.Parent and label and label.Parent then
+                badge.Position = UDim2.new(0, -3, 0.5, 1)
+            end
+        end
+        label:GetPropertyChangedSignal("Text"):Connect(reposition)
+        label:GetPropertyChangedSignal("TextBounds"):Connect(reposition)
+        label:GetPropertyChangedSignal("AbsoluteSize"):Connect(reposition)
+    end
+
+    local function startStarCreator()
+        stopStarCreator()
+        State.starCreator = true
+        ensureBadgeAsset()
+
+        starCreatorWatchTask = task.spawn(function()
+            while State.starCreator do task.wait(1) end
+        end)
+
+        CoreGui.DescendantAdded:Connect(function(descendant)
+            if not State.starCreator then return end
+            if not (descendant:IsA("TextLabel") or descendant:IsA("TextButton")) then return end
+            if not isInPlayerList(descendant) then return end
+            task.defer(function()
+                if containsTarget(descendant.Text) then
+                    attachBadge(descendant)
+                end
+            end)
+        end)
+    end
+
+    --// ============================================================
+    --// CREATE BUTTONS
+    --// ============================================================
+
+    createToggleButton("VerifiedButton", "Verified", 10, startVerified, stopVerified)
+    createToggleButton("StarcodeButton", "Starcode Creator", 58, startStarCreator, stopStarCreator)
+end
+
+--// ============================================================
+--// BOOT
+--// ============================================================
+
+if hasSavedKey() then
+    startHub()
+else
+    showKeyPrompt(startHub)
+end
